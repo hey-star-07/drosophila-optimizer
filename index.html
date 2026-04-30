@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Drosophila Optimizer - Métodos Numéricos</title>
+    <link href="https://fonts.googleapis.com/css2?family=Quicksand:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="logo">
+                <i class="fas fa-dna"></i>
+                <span>Drosophila<span class="accent">Optimizer</span></span>
+            </div>
+            <nav class="nav">
+                <button class="nav-btn active" data-tab="inicio">
+                    <i class="fas fa-home"></i>
+                    <span>Inicio</span>
+                </button>
+                <button class="nav-btn" data-tab="ideal">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Caso Ideal</span>
+                </button>
+                <button class="nav-btn" data-tab="estres">
+                    <i class="fas fa-bolt"></i>
+                    <span>Caso Estrés</span>
+                </button>
+                <button class="nav-btn" data-tab="mal">
+                    <i class="fas fa-skull-crossbones"></i>
+                    <span>Caso Mal Cond.</span>
+                </button>
+                <button class="nav-btn" data-tab="interpretacion">
+                    <i class="fas fa-brain"></i>
+                    <span>Interpretación</span>
+                </button>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+                         <!-- Tab: Inicio -->
+            <div id="tab-inicio" class="tab-content active">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-bug"></i>
+                        <h2>Contexto Biológico</h2>
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Drosophila melanogaster</strong> (mosca de la fruta) es uno de los organismos modelo más estudiados en biología. Su ciclo de vida corto (~10 días a 25°C) y su sensibilidad a condiciones ambientales la hacen ideal para modelos matemáticos de dinámica poblacional.</p>
+                        <p>Investigadores como Luckinbill (1978) y Mueller & Ayala (1981) han documentado experimentalmente las tasas de crecimiento bajo condiciones controladas.</p>
+                        <p>El sistema que planteamos modela el equilibrio entre tres estadios poblacionales bajo diferentes condiciones ambientales:</p>
+                        <ul>
+                            <li><strong>x₁</strong> = Tamaño de la población de larvas (unidades: individuos × 10²)</li>
+                            <li><strong>x₂</strong> = Tamaño de la población de pupas (unidades: individuos × 10²)</li>
+                            <li><strong>x₃</strong> = Tamaño de la población de adultos reproductores (unidades: individuos × 10²)</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-simple"></i>
+                        <h3>Base Biológica del Modelo</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>Las ecuaciones representan balances de flujo entre estadios:</p>
+                        <ul>
+                            <li><strong>Ecuación 1 (Balance larvas):</strong> tasa entrada - tasa producción = demanda ecológica</li>
+                            <li><strong>Ecuación 2 (Balance pupas):</strong> tasa producción - tasa emergencia = demanda ecológica</li>
+                            <li><strong>Ecuación 3 (Balance adultos):</strong> tasa emergencia - mortalidad adultos = presión reproductiva</li>
+                        </ul>
+                        <p>Los coeficientes provienen de datos experimentales de laboratorio (temperatura, humedad, densidad).</p>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-simple"></i>
+                        <h3>Variables del Modelo</h3>
+                    </div>
+                    <div class="card-body">
+                        <table class="variables-table">
+                            <thead>
+                                <tr><th>Variable</th><th>Descripción Biológica</th><th>Unidad</th></tr>
+                            </thead>
+                            <tbody>
+                                <tr><td><strong>x₁</strong></td><td>Densidad de larvas en el cultivo</td><td>×10² individuos</td></tr>
+                                <tr><td><strong>x₂</strong></td><td>Densidad de pupas en el cultivo</td><td>×10² individuos</td></tr>
+                                <tr><td><strong>x₃</strong></td><td>Densidad de adultos reproductores</td><td>×10² individuos</td></tr>
+                                <tr><td><strong>b₁</strong></td><td>Tasa neta de oviposición (huevos fértiles)</td><td>huevos/día ×10²</td></tr>
+                                <tr><td><strong>b₂</strong></td><td>Tasa neta de transformación larval-pupa</td><td>individuos/día ×10²</td></tr>
+                                <tr><td><strong>b₃</strong></td><td>Tasa neta de reproducción adultos</td><td>individuos/día ×10²</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-calculator"></i>
+                        <h3>Estructura del Sistema Lineal</h3>
+                    </div>
+                    <div class="card-body">
+                        <p>El sistema representa balances de flujo entre estadios poblacionales:</p>
+                        <div class="equations">
+                            <p><strong>Ecuación 1 (Larvas):</strong> a₁₁x₁ + a₁₂x₂ + a₁₃x₃ = b₁</p>
+                            <p><strong>Ecuación 2 (Pupas):</strong> a₂₁x₁ + a₂₂x₂ + a₂₃x₃ = b₂</p>
+                            <p><strong>Ecuación 3 (Adultos):</strong> a₃₁x₁ + a₃₂x₂ + a₃₃x₃ = b₃</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Caso Ideal -->
+            <div id="tab-ideal" class="tab-content">
+                <div class="case-header">
+                    <h2><i class="fas fa-chart-line"></i> Caso Ideal - Sistema Bien Condicionado</h2>
+                    <p>Condiciones óptimas de laboratorio: temperatura 25°C, humedad 70%, alimento abundante</p>
+                </div>
+                
+                <div class="matrix-input">
+                    <h3><i class="fas fa-table"></i> Configuración del Sistema</h3>
+                    <div class="dimension-control">
+                        <label><i class="fas fa-arrows-alt"></i> Dimensión n (max 6):</label>
+                        <input type="number" id="ideal-n" min="2" max="6" value="3">
+                        <button id="ideal-resize" class="btn-secondary"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                        <button id="ideal-reset" class="btn-primary"><i class="fas fa-undo-alt"></i> Valores por defecto</button>
+                    </div>
+                    <div id="ideal-matrix-panel"></div>
+                    
+                    <div class="action-buttons">
+                        <button id="ideal-solve-lu" class="btn-lu"><i class="fas fa-calculator"></i> Resolver con LU</button>
+                        <button id="ideal-run-all" class="btn-run-all"><i class="fas fa-play-circle"></i> Ejecutar todos los métodos</button>
+                    </div>
+                </div>
+
+                <div id="ideal-lu-result" class="results-panel lu-panel" style="display:none;"></div>
+
+                <div class="visualizer-section">
+                    <h3><i class="fas fa-cube"></i> Visualización 3D de Planos</h3>
+                    <div id="three-ideal" class="three-viewer"></div>
+                </div>
+
+                <!-- 4 BOTONES ORIGINALES - Métodos individuales -->
+                <div class="method-buttons">
+                    <button class="method-btn" data-method="jacobi" data-case="ideal"><i class="fas fa-chart-line"></i> Jacobi</button>
+                    <button class="method-btn" data-method="gauss" data-case="ideal"><i class="fas fa-chart-simple"></i> Gauss-Seidel</button>
+                    <button class="method-btn" data-method="sor" data-case="ideal"><i class="fas fa-tachometer-alt"></i> SOR</button>
+                    <button class="method-btn" data-method="cgpc" data-case="ideal"><i class="fas fa-magic"></i> Gradiente Conjugado Precondicionado</button>
+                </div>
+
+                <!-- Resultado individual (paso a paso) -->
+                <div id="ideal-results" class="results-panel" style="display:none;"></div>
+                
+                <!-- Resultado de ejecutar todos (resumen en tarjetas) -->
+                <div id="ideal-all-results" class="all-methods-results" style="display:none;"></div>
+            </div>
+
+            <!-- Tab: Caso Estrés -->
+            <div id="tab-estres" class="tab-content">
+                <div class="case-header">
+                    <h2><i class="fas fa-bolt"></i> Caso Bajo Estrés - Demanda Energética Extrema</h2>
+                    <p>Escenario de migración: alta demanda metabólica, coeficientes amplificados</p>
+                </div>
+                
+                <div class="matrix-input">
+                    <h3><i class="fas fa-table"></i> Configuración del Sistema</h3>
+                    <div class="dimension-control">
+                        <label><i class="fas fa-arrows-alt"></i> Dimensión n (max 6):</label>
+                        <input type="number" id="estres-n" min="2" max="6" value="3">
+                        <button id="estres-resize" class="btn-secondary"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                        <button id="estres-reset" class="btn-primary"><i class="fas fa-undo-alt"></i> Valores por defecto</button>
+                    </div>
+                    <div id="estres-matrix-panel"></div>
+                    
+                    <div class="action-buttons">
+                        <button id="estres-solve-lu" class="btn-lu"><i class="fas fa-calculator"></i> Resolver con LU</button>
+                        <button id="estres-run-all" class="btn-run-all"><i class="fas fa-play-circle"></i> Ejecutar todos los métodos</button>
+                    </div>
+                </div>
+
+                <div id="estres-lu-result" class="results-panel lu-panel" style="display:none;"></div>
+
+                <div class="visualizer-section">
+                    <h3><i class="fas fa-cube"></i> Visualización 3D de Planos</h3>
+                    <div id="three-estres" class="three-viewer"></div>
+                </div>
+
+                <div class="method-buttons">
+                    <button class="method-btn" data-method="jacobi" data-case="estres"><i class="fas fa-chart-line"></i> Jacobi</button>
+                    <button class="method-btn" data-method="gauss" data-case="estres"><i class="fas fa-chart-simple"></i> Gauss-Seidel</button>
+                    <button class="method-btn" data-method="sor" data-case="estres"><i class="fas fa-tachometer-alt"></i> SOR</button>
+                    <button class="method-btn" data-method="cgpc" data-case="estres"><i class="fas fa-magic"></i> Gradiente Conjugado Precondicionado</button>
+                </div>
+
+                <div id="estres-results" class="results-panel" style="display:none;"></div>
+                <div id="estres-all-results" class="all-methods-results" style="display:none;"></div>
+            </div>
+
+            <!-- Tab: Caso Mal Condicionado -->
+            <div id="tab-mal" class="tab-content">
+                <div class="case-header">
+                    <h2><i class="fas fa-skull-crossbones"></i> Caso Mal Condicionado</h2>
+                    <p>Dos fuentes de alimento nutricionalmente casi idénticas - hiperplanos casi paralelos</p>
+                </div>
+                
+                <div class="matrix-input">
+                    <h3><i class="fas fa-table"></i> Configuración del Sistema</h3>
+                    <div class="dimension-control">
+                        <label><i class="fas fa-arrows-alt"></i> Dimensión n (max 6):</label>
+                        <input type="number" id="mal-n" min="2" max="6" value="3">
+                        <button id="mal-resize" class="btn-secondary"><i class="fas fa-sync-alt"></i> Actualizar</button>
+                        <button id="mal-reset" class="btn-primary"><i class="fas fa-undo-alt"></i> Valores por defecto</button>
+                    </div>
+                    <div id="mal-matrix-panel"></div>
+                    
+                    <div class="action-buttons">
+                        <button id="mal-solve-lu" class="btn-lu"><i class="fas fa-calculator"></i> Resolver con LU</button>
+                        <button id="mal-run-all" class="btn-run-all"><i class="fas fa-play-circle"></i> Ejecutar todos los métodos</button>
+                    </div>
+                </div>
+
+                <div id="mal-lu-result" class="results-panel lu-panel" style="display:none;"></div>
+
+                <div class="visualizer-section">
+                    <h3><i class="fas fa-cube"></i> Visualización 3D de Planos</h3>
+                    <div id="three-mal" class="three-viewer"></div>
+                </div>
+
+                <div class="method-buttons">
+                    <button class="method-btn" data-method="jacobi" data-case="mal"><i class="fas fa-chart-line"></i> Jacobi</button>
+                    <button class="method-btn" data-method="gauss" data-case="mal"><i class="fas fa-chart-simple"></i> Gauss-Seidel</button>
+                    <button class="method-btn" data-method="sor" data-case="mal"><i class="fas fa-tachometer-alt"></i> SOR</button>
+                    <button class="method-btn" data-method="cgpc" data-case="mal"><i class="fas fa-magic"></i> Gradiente Conjugado Precondicionado</button>
+                </div>
+
+                <div id="mal-results" class="results-panel" style="display:none;"></div>
+                <div id="mal-all-results" class="all-methods-results" style="display:none;"></div>
+            </div>
+
+            <!-- Tab: Interpretación -->
+            <div id="tab-interpretacion" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-simple"></i>
+                        <h2>Análisis Comparativo de Desempeño</h2>
+                    </div>
+                    <div class="card-body">
+                        <h3>Tabla Comparativa (Tolerancia 10⁻⁶)</h3>
+                        <p>Resultados obtenidos al ejecutar cada algoritmo sobre los tres escenarios:</p>
+                        <div id="comparison-table"></div>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-flask"></i>
+                        <h2>Interpretación de los Resultados</h2>
+                    </div>
+                    <div class="card-body" id="interpretation-text"></div>
+                </div>
+                <div class="card">
+                    <div class="card-header">
+                        <i class="fas fa-chart-line"></i>
+                        <h2>Conclusión del análisis de condicionamiento</h2>
+                    </div>
+                    <div class="card-body" id="conclusion-text"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
