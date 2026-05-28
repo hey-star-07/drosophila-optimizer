@@ -112,6 +112,13 @@ function redimensionarMatriz(caso, n) {
     generarInputsMatriz(caso, n, newMatrix, newB);
 }
 
+function refreshInterpretacion() {
+    const activeTab = document.querySelector('.tab-content.active');
+    if (activeTab && activeTab.id === 'tab-interpretacion') {
+        actualizarInterpretacion();
+    }
+}
+
 function generarInputsMatriz(caso, n, matrix, b) {
     const panel = document.getElementById(`${caso}-matrix-panel`);
     if (!panel) return;
@@ -140,11 +147,13 @@ function generarInputsMatriz(caso, n, matrix, b) {
             const input = document.getElementById(`${caso}_a_${i}_${j}`);
             if (input) {
                 input.addEventListener('change', () => actualizarVisualizador3D(caso));
+                refreshInterpretacion();
             }
         }
         const inputB = document.getElementById(`${caso}_b_${i}`);
         if (inputB) {
             inputB.addEventListener('change', () => actualizarVisualizador3D(caso));
+            refreshInterpretacion();
         }
     }
 }
@@ -725,21 +734,167 @@ function actualizarInterpretacion() {
     const container = document.getElementById('interpretation-text');
     if (!container) return;
     
-    container.innerHTML = `
+    // Obtener datos actuales de los tres casos
+    const datos = {
+        ideal: leerMatrizDesdeDOM('ideal'),
+        estres: leerMatrizDesdeDOM('estres'),
+        mal: leerMatrizDesdeDOM('mal')
+    };
+    
+    // Calcular números de condición y soluciones
+    const condNumbers = {
+        ideal: calcularNumeroCondicion(datos.ideal.A),
+        estres: calcularNumeroCondicion(datos.estres.A),
+        mal: calcularNumeroCondicion(datos.mal.A)
+    };
+    
+    // Calcular soluciones exactas usando LU para cada caso
+    let soluciones = { ideal: null, estres: null, mal: null };
+    try {
+        soluciones.ideal = resolverLUConPasos(datos.ideal.A, datos.ideal.b).solution;
+        soluciones.estres = resolverLUConPasos(datos.estres.A, datos.estres.b).solution;
+        soluciones.mal = resolverLUConPasos(datos.mal.A, datos.mal.b).solution;
+    } catch(e) {
+        console.warn('Error al calcular soluciones LU', e);
+    }
+    
+    
+    // ============================================
+    // SECCIÓN 2: QUÉ SIGNIFICA LA SOLUCIÓN DEL SISTEMA
+    // ============================================
+    const formatSolution = (sol) => {
+        if (!sol) return 'No disponible';
+        return sol.map((v, i) => `x${i+1} = ${v.toFixed(6)}`).join(', ');
+    };
+    
+    const seccionSolucion = `
         <div style="background:#c7e9d7; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
-            <h4><i class="fas fa-chart-line"></i> Caso Ideal — Todos los métodos funcionan bien</h4>
-            <p>Con κ pequeño, cualquier método iterativo converge rápidamente. El Gradiente Conjugado Precondicionado necesita pocas iteraciones, en concordancia con la propiedad teórica del método demostrada en el artículo de Suñagua (2020).</p>
+            <h4><i class="fas fa-microchip"></i> Interpretación de la Solución del Sistema</h4>
+            <p>El sistema Ax = b representa el <strong>equilibrio poblacional</strong> de Drosophila melanogaster. La solución x = [x₁, x₂, x₃] es el <strong>punto de equilibrio</strong> donde las poblaciones se estabilizan.</p>
+            
+            <table style="width:100%; margin:15px 0; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:#b0d4cb;">
+                        <th style="padding:10px; border:2px solid #2d3e50;">Variable</th>
+                        <th style="padding:10px; border:2px solid #2d3e50;">Significado en el equilibrio</th>
+                        <th style="padding:10px; border:2px solid #2d3e50;">Valor actual</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td style="padding:8px; border:2px solid #2d3e50;"><strong>x₁ (Larvas)</strong></td>
+                        <td style="padding:8px; border:2px solid #2d3e50;">Densidad de larvas en equilibrio: nacimientos = mortalidad + pupación</td>
+                        <td style="padding:8px; border:2px solid #2d3e50; font-family:monospace;">${soluciones.ideal ? soluciones.ideal[0].toFixed(6) : '?'}</td>
+                    </tr>
+                    <tr style="background:#fef9e6;">
+                        <td style="padding:8px; border:2px solid #2d3e50;"><strong>x₂ (Pupas)</strong></td>
+                        <td style="padding:8px; border:2px solid #2d3e50;">Densidad de pupas en equilibrio: pupación = emergencia de adultos</td>
+                        <td style="padding:8px; border:2px solid #2d3e50; font-family:monospace;">${soluciones.ideal ? soluciones.ideal[1].toFixed(6) : '?'}</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:8px; border:2px solid #2d3e50;"><strong>x₃ (Adultos)</strong></td>
+                        <td style="padding:8px; border:2px solid #2d3e50;">Densidad de adultos en equilibrio: emergencia = mortalidad natural</td>
+                        <td style="padding:8px; border:2px solid #2d3e50; font-family:monospace;">${soluciones.ideal ? soluciones.ideal[2].toFixed(6) : '?'}</td>
+                    </tr>
+                </tbody>
+            </table>
+            
+            <p><strong>Interpretación biológica:</strong> En el punto de equilibrio, las tasas de entrada y salida de cada estadio se igualan. Si la población se desvía de este punto, las fuerzas del sistema la empujan de vuelta al equilibrio (si el sistema es estable).</p>
+            
+        </div>
+    `;
+
+    const analisisBiologico = `
+        <div style="background:#c7e9d7; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
+            <h4><i class="fas fa-dna"></i> Contexto Biológico del Modelo</h4>
+            <p>El sistema de ecuaciones modela la <strong>dinámica poblacional de Drosophila melanogaster</strong> en sus tres estadios de vida:</p>
+            <ul style="margin: 15px 0 10px 25px;">
+                <li><strong>x₁ (Larvas)</strong> - Estado inmaduro que se alimenta y crece. Su tasa de crecimiento depende de la disponibilidad de alimento y temperatura.</li>
+                <li><strong>x₂ (Pupas)</strong> - Estado de metamorfosis, no se alimenta. Transición crítica entre larva y adulto.</li>
+                <li><strong>x₃ (Adultos)</strong> - Estado reproductivo. Ponen huevos que generan nuevas larvas.</li>
+            </ul>
+            <p>Los coeficientes de la matriz A representan <strong>tasas de transición y competencia</strong> entre estadios, mientras que el vector b representa <strong>flujos externos</strong> (oviposición, transformación, reproducción).</p>
+        </div>
+    `;
+    
+    // ============================================
+    // SECCIÓN 3: ANÁLISIS POR CASO
+    // ============================================
+    const analisisPorCaso = `
+        <div style="background:#fef9e6; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
+            <h4><i class="fas fa-chart-line"></i> Caso Ideal — κ = ${condNumbers.ideal.toExponential(4)}</h4>
+            <p><strong>Solución exacta:</strong> [${soluciones.ideal ? soluciones.ideal.map(v => v.toFixed(6)).join(', ') : 'N/A'}]</p>
+            <p>El sistema está bien condicionado. Las tasas de transición son equilibradas y claramente diferenciadas. <strong>Biológicamente:</strong> Población estable, condiciones óptimas.</p>
+            <p>Las tasas de transición entre estadios están claramente diferenciadas. Esto representa un ecosistema donde:</p>
+            <ul style="margin: 10px 0 10px 25px;">
+                <li>El alimento es abundante y bien distribuido</li>
+                <li>No hay competencia extrema entre individuos</li>
+                <li>La temperatura (25°C) y humedad (70%) son óptimas</li>
+            </ul>
+            <p><strong>Interpretación matemática:</strong> Todos los métodos iterativos convergen rápidamente. El error no se amplifica significativamente.</p>
         </div>
         
-        <div style="background:#fef9e6; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
-            <h4><i class="fas fa-bolt"></i> Caso Bajo Estrés — Diagonal dominante preservada</h4>
-            <p>La estructura diagonal dominante garantiza la convergencia de Jacobi y Gauss-Seidel. El GCP es el más eficiente porque el precondicionador reduce κ efectivo.</p>
+        <div style="background:#e8f4f0; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
+            <h4><i class="fas fa-bolt"></i> Caso Estrés — κ = ${condNumbers.estres.toExponential(4)}</h4>
+            <p><strong>Solución exacta:</strong> [${soluciones.estres ? soluciones.estres.map(v => v.toFixed(6)).join(', ') : 'N/A'}]</p>
+            <p>Condicionamiento moderado. Los coeficientes son mayores (demanda energética extrema). <strong>Biológicamente:</strong> Población bajo presión, pero aún estable.</p>
+            <p>Escenario de migración o escasez de recursos. Biológicamente significa:</p>
+            <ul style="margin: 10px 0 10px 25px;">
+                <li>Las larvas aceleran su desarrollo (coeficientes aumentan)</li>
+                <li>La competencia por alimento se intensifica</li>
+                <li>La mortalidad aumenta en todos los estadios</li>
+            </ul>
+            <p><strong>Interpretación matemática:</strong> La diagonal dominante se preserva, pero los coeficientes son mayores. Métodos como Jacobi y Gauss-Seidel aún convergen, aunque más lentamente.</p>
+            
         </div>
         
         <div style="background:#ffe0e0; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
-            <h4><i class="fas fa-skull-crossbones"></i> Caso Mal Condicionado — Solo GCP converge</h4>
-            <p>Jacobi y Gauss-Seidel divergen porque la condición de diagonal dominante se viola. SOR tampoco converge. Solo el GCP logra convergencia, validando la tesis central del artículo: <strong>el precondicionado es esencial para matrices mal condicionadas</strong>.</p>
-        </div>`;
+            <h4><i class="fas fa-skull-crossbones"></i> Caso Mal Condicionado — κ = ${condNumbers.mal.toExponential(4)}</h4>
+            <p><strong>Solución exacta:</strong> [${soluciones.mal ? soluciones.mal.map(v => v.toFixed(6)).join(', ') : 'N/A'}]</p>
+            <p>Sistema casi singular. Dos recursos son casi idénticos. <strong>Biológicamente:</strong> Inestabilidad poblacional; pequeñas perturbaciones causan grandes cambios.</p>
+            <p>Biológicamente, esto ocurre cuando dos fuentes de alimento son <strong>nutricionalmente indistinguibles</strong> (ej. dos cepas de levadura con composición similar). Esto genera:</p>
+            <ul style="margin: 10px 0 10px 25px;">
+                <li>Competencia casi perfecta entre individuos por el mismo recurso</li>
+                <li>Inestabilidad poblacional: pequeñas perturbaciones causan grandes cambios</li>
+                <li>Dificultad para predecir la población estable</li>
+            </ul>
+            <p><strong>Interpretación matemática:</strong> Los hiperplanos del sistema son casi paralelos. Solo el Gradiente Conjugado Precondicionado puede resolverlo eficientemente.</p>
+        </div>
+    `;
+    
+    // ============================================
+    // SECCIÓN 4: TABLA DE VARIABLES
+    // ============================================
+    const tablaVariables = `
+        <div style="background:#ffffff; padding:20px; border-radius:20px; border:3px solid #2d3e50; margin-bottom:20px;">
+            <h4><i class="fas fa-calculator"></i> Significado de las Variables y Coeficientes</h4>
+            <table class="variables-table" style="margin-top:15px;">
+                <thead>
+                    <tr style="background:#c7e9d7;">
+                        <th>Variable</th>
+                        <th>Significado Biológico</th>
+                        <th>Unidad</th>
+                        <th>Rango típico</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td><strong>x₁</strong></td><td>Densidad de larvas en el cultivo</td><td>×10² individuos</td><td>0 - 500</td></tr>
+                    <tr><td><strong>x₂</strong></td><td>Densidad de pupas en el cultivo</td><td>×10² individuos</td><td>0 - 300</td></tr>
+                    <tr><td><strong>x₃</strong></td><td>Densidad de adultos reproductores</td><td>×10² individuos</td><td>0 - 200</td></tr>
+                    <tr><td><strong>b₁</strong></td><td>Tasa neta de oviposición (huevos puestos por adultos)</td><td>huevos/día ×10²</td><td>10 - 200</td></tr>
+                    <tr><td><strong>b₂</strong></td><td>Tasa neta de transformación larva → pupa</td><td>individuos/día ×10²</td><td>5 - 100</td></tr>
+                    <tr><td><strong>b₃</strong></td><td>Tasa neta de reproducción de adultos</td><td>individuos/día ×10²</td><td>2 - 50</td></tr>
+                </tbody>
+            </table>
+            <p style="margin-top:15px;"><strong>Coeficientes aᵢⱼ:</strong> Representan tasas de interacción entre estadios. Valores positivos = crecimiento/beneficio; Valores negativos = competencia/mortalidad.</p>
+        </div>
+    `;
+    
+    
+    // ============================================
+    // UNIR TODO
+    // ============================================
+    container.innerHTML = analisisBiologico +seccionSolucion + analisisPorCaso + tablaVariables;
 }
 
 function actualizarConclusion() {
